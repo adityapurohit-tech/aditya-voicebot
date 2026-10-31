@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Talk to Aditya – voice bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EAF0F4; --ink:#0F1F2D; --muted:#4D6275; --card:#FFFFFF; --line:#C5D3DE;
+  --accent:#0B7A75; --accent-ink:#FFFFFF; --warm:#C98A06; --bad:#B3261E;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Newsreader",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0C151D; --ink:#E8EFF5; --muted:#9DB0C0; --card:#13212C; --line:#243645;
+    --accent:#3CC4BA; --accent-ink:#06201E; --warm:#F2B33D; --bad:#FF8A80;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0C151D; --ink:#E8EFF5; --muted:#9DB0C0; --card:#13212C; --line:#243645;
+  --accent:#3CC4BA; --accent-ink:#06201E; --warm:#F2B33D; --bad:#FF8A80;
+}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;min-height:100%;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:19px;line-height:1.55;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+}
+.wrap{max-width:660px;margin:0 auto;padding:28px 20px 48px}
+header h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.08;margin:0 0 8px;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted);max-width:52ch}
+.stage{display:flex;flex-direction:column;align-items:center;margin:34px 0 10px}
+.orb{
+  position:relative;width:176px;height:176px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;
+  box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 16%,transparent),0 0 0 22px color-mix(in srgb,var(--accent) 8%,transparent);
+  transition:background .2s,box-shadow .2s;
+}
+.orb:focus-visible{outline:3px solid var(--ink);outline-offset:6px}
+.orb[data-state="listening"]{background:var(--bad);box-shadow:0 0 0 10px color-mix(in srgb,var(--bad) 22%,transparent),0 0 0 22px color-mix(in srgb,var(--bad) 10%,transparent)}
+.orb[data-state="speaking"]{background:var(--warm);color:#1B1300}
+.orb[data-state="thinking"]{background:var(--muted)}
+.bars{display:flex;align-items:center;gap:7px;height:64px}
+.bars i{display:block;width:8px;height:14px;border-radius:5px;background:currentColor;opacity:.95}
+.orb[data-state="listening"] .bars i,.orb[data-state="speaking"] .bars i{animation:bar 0.9s ease-in-out infinite}
+.orb[data-state="thinking"] .bars i{animation:bar 1.6s ease-in-out infinite}
+.bars i:nth-child(1){animation-delay:-.1s}.bars i:nth-child(2){animation-delay:-.35s}.bars i:nth-child(3){animation-delay:-.6s}
+.bars i:nth-child(4){animation-delay:-.2s}.bars i:nth-child(5){animation-delay:-.5s}.bars i:nth-child(6){animation-delay:-.05s}.bars i:nth-child(7){animation-delay:-.4s}
+@keyframes bar{0%,100%{height:12px}50%{height:58px}}
+@media (prefers-reduced-motion: reduce){.orb .bars i{animation:none!important}}
+.status{font-family:var(--display);font-weight:500;font-size:20px;margin:30px 0 4px;text-align:center;min-height:1.4em}
+.caption{color:var(--muted);text-align:center;min-height:1.6em;font-style:italic;max-width:46ch}
+.tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.btn{font:500 16px var(--display);padding:10px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;min-height:44px}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.voicepick{max-width:100%;padding:9px 12px;appearance:auto}
+.notice{background:var(--card);border:1.5px solid var(--line);border-left:5px solid var(--warm);border-radius:10px;padding:12px 16px;margin:18px 0 0;font-size:17px}
+.notice[hidden]{display:none}
+h2{font-family:var(--display);font-size:19px;font-weight:700;margin:34px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{font:500 15.5px var(--display);padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;min-height:40px;text-align:left}
+.chip:hover{border-color:var(--accent)}
+.chip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ask{display:flex;gap:10px;margin-top:14px}
+.ask input{flex:1;min-width:0;font:400 18px var(--body);padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);min-height:48px}
+.ask input:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.ask .btn{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.log{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.msg{max-width:100%;padding:12px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--card)}
+.msg.you{align-self:flex-end;max-width:88%;background:transparent;border-style:dashed;color:var(--muted)}
+.msg.bot{border-left:5px solid var(--accent)}
+.msg b{font-family:var(--display);font-size:14.5px;font-weight:700;display:block;margin-bottom:2px;color:var(--muted)}
+.msg p{margin:0;max-width:68ch}
+.empty{color:var(--muted);font-style:italic}
+footer{margin-top:40px;color:var(--muted);font-size:16px;border-top:1.5px solid var(--line);padding-top:16px}
+footer a{color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Talk to Aditya</h1>
+    <p>This is a voice bot that answers the way I would. Tap the circle, ask a question out loud, and listen. You can also type.</p>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Voice controls">
+      <button id="orb" class="orb" type="button" data-state="idle" aria-label="Start talking">
+        <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </button>
+      <div id="status" class="status" role="status" aria-live="polite">Tap the circle and ask a question</div>
+      <div id="caption" class="caption" aria-live="off"></div>
+      <div class="tools">
+        <button id="speakToggle" class="btn" type="button" aria-pressed="true">Spoken answers: on</button>
+        <button id="stopBtn" class="btn" type="button">Stop speaking</button>
+        <label class="sr" for="voiceSel">Voice</label>
+        <select id="voiceSel" class="btn voicepick" aria-label="Choose a voice"></select>
+      </div>
+      <div id="notice" class="notice" role="alert" hidden></div>
+    </section>
+
+    <section aria-labelledby="try">
+      <h2 id="try">Try asking</h2>
+      <div id="chips" class="chips"></div>
+      <form id="askForm" class="ask" autocomplete="off">
+        <label class="sr" for="askInput">Type your question</label>
+        <input id="askInput" type="text" placeholder="Or type a question here" maxlength="300">
+        <button class="btn" type="submit">Ask</button>
+      </form>
+    </section>
+
+    <section aria-labelledby="conv">
+      <h2 id="conv">Conversation</h2>
+      <div id="log" class="log" aria-live="polite"><p class="empty">Your questions and my answers will appear here.</p></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Aditya Shrikant Purohit · AI Engineer · <a href="mailto:adityapurohit2002@gmail.com">adityapurohit2002@gmail.com</a> · <a href="https://github.com/adityapurohit-tech" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.linkedin.com/in/aditya-purohit-77a287227" target="_blank" rel="noopener">LinkedIn</a></p>
+    <p>Voice input works best in Chrome or Edge. If the microphone is blocked, open this link in its own tab, or type your question.</p>
+  </footer>
+</div>
+
+<script>
+/* ===========================================================================
+   PERSONA  (edit the words below to match how you really talk)
+   Each entry: triggers = phrases a question may contain, keys = single words,
+   a = the spoken answer. Keep answers to 3-5 short sentences.
+   =========================================================================== */
+const PERSONA = [
+  { id:"greeting", triggers:["hello","hi there","hey there","good morning","good evening"], keys:[],
+    a:"Hi, this is Aditya. Ask me anything about my background, how I work, or the AI systems I’ve built." },
+
+  { id:"life", triggers:["life story","about yourself","tell me about you","who are you","introduce yourself","your background","your story","walk me through"], keys:["background","story","yourself"],
+    a:"I’m Aditya, from Kolhapur in Maharashtra. I studied engineering and moved into AI, started working in June 2024, and I’m finishing a post-graduate diploma in AI at IIT Jodhpur. Today I build agent and RAG systems, and what I care about most is making their answers something you can verify, not just something that sounds right." },
+
+  { id:"superpower", triggers:["superpower","greatest strength","your strength","best at","good at","what are you best","number one","#1"], keys:["superpower","strength","strengths"],
+    a:"My superpower is turning a vague AI idea into something I can measure. I don’t trust an answer because it sounds good. I check it against evidence. In my RAG project that habit took decision accuracy on my test set from 36.8 percent to 100 percent." },
+
+  { id:"growth", triggers:["areas you","like to grow","areas to grow","want to improve","to improve","weakness","weaknesses","top 3 areas","three areas","grow in","develop further"], keys:["weakness","weaknesses","improve"],
+    a:"Three areas I’m working on. First, running systems live at scale, with real incidents and on-call habits. Second, leading others, which means mentoring and making decisions with a team and not just on my own. Third, research depth, so I can read a new paper and turn it into something I’ve tested myself." },
+
+  { id:"misconception", triggers:["misconception","coworkers","co workers","colleagues think","people think","wrong about you","misunderstand","misunderstood","assume about you"], keys:["misconception","misunderstood"],
+    a:"People sometimes read my care with details as slowness. I like to check things before I say they work, so I can look quiet at the start. But what I hand over has been tested, and I usually move faster afterwards because there’s less to fix." },
+
+  { id:"boundaries", triggers:["push your boundaries","push your limits","push yourself","your limits","comfort zone","challenge yourself","stretch yourself","boundaries"], keys:["boundaries","limits"],
+    a:"I give myself small, public projects in areas I haven’t done yet, with a short deadline, and I publish the code so it can be checked. My RAG platform was a solo build of about two weeks, and my multi-agent system took roughly ten to twelve days. Each one pushed me into something new, like claim-level verification or graph-based agent orchestration." },
+
+  { id:"why100x", triggers:["why 100x","why this role","why do you want","why should we hire","why you","why this company","why are you interested","why join"], keys:["100x"],
+    a:"I like that 100x is about agents doing real work for real businesses, and that engineers own the outcome. That’s how I like to build: a scoped problem, a measurable result, then ship it and improve it from real feedback." },
+
+  { id:"projects", triggers:["project","something you built","what have you built","proud of","portfolio","what are you working on","your work","show me"], keys:["projects","built","proud"],
+    a:"Three I’d point to. A regulatory-grade RAG platform that checks every answer claim by claim against its sources and refuses when it can’t. An eleven-agent LangGraph system for lead decisions, with a compliance gate and a human-review step. And an expert-call analyzer that runs fully locally and answers only from the transcripts. All three are on my GitHub." },
+
+  { id:"agents", triggers:["ai agent","built an agent","multi agent","agentic","langgraph","how do your agents"], keys:["agent","agents","agentic"],
+    a:"My multi-agent system decides whether a lead is hot, warm or cold and which campaign fits. A compliance gate checks consent and frequency limits and blocks the lead if data is missing. A critic checks every drafted message, and after three failed revisions the graph stops and hands the lead to a human instead of looping forever." },
+
+  { id:"tools", triggers:["ai tools","claude code","cursor","copilot","how do you use ai","coding tools","use ai to code","use chatgpt"], keys:["tools","copilot"],
+    a:"I use Claude Code, Cursor and Copilot every day. I write down the behavior I expect, ask for the code, and then read and test every change before it goes in. In one project the assistant paid the game’s drawer the full average of the guessers’ points, which made two-player games always tie. I caught it by playing, fixed it, and added a test." },
+
+  { id:"tech", triggers:["tech stack","your skills","what languages","which languages","technologies","what do you know","programming"], keys:["stack","languages"],
+    a:"Mostly Python and TypeScript, with Node.js, FastAPI and React. On the AI side, LangGraph, LangChain, RAG with FAISS and pgvector, and evaluation. I deploy with Docker and CI on AWS, Azure or GCP." },
+
+  { id:"failure", triggers:["failure","biggest mistake","a mistake","hardest challenge","difficult","went wrong","a bug","tell me about a time"], keys:["failure","mistake","challenge"],
+    a:"The first version of my RAG platform was safe mostly because it refused almost everything. It got only 2 of 13 answerable questions right. I redesigned it to verify each claim, and it now gets all 13 while still refusing the questions it should. The lesson was that safe and useful have to be measured together." },
+
+  { id:"feedback", triggers:["feedback","criticism","constructive","when someone disagrees"], keys:["feedback","criticism"],
+    a:"I treat feedback like a bug report. I ask what happened, reproduce it if I can, and fix the cause instead of arguing about the symptom. Then I add a check so the same thing doesn’t come back." },
+
+  { id:"team", triggers:["work in a team","teamwork","remote","collaborate","work with others","working style","work style"], keys:["team","remote","collaborate"],
+    a:"I work best with clear goals and written updates. I flag blockers early, keep notes of decisions, and I’m comfortable working on my own for long stretches. I also like pairing on hard problems, because a second pair of eyes finds things quickly." },
+
+  { id:"motivation", triggers:["motivates you","what drives you","passionate","why ai","what excites you","what do you enjoy"], keys:["motivate","passionate"],
+    a:"What excites me is AI that earns trust. It’s easy to make a demo that impresses. It’s harder, and more useful, to build something whose answers you can check and whose failures are handled on purpose." },
+
+  { id:"future", triggers:["five years","5 years","where do you see yourself","long term","career goals","your goals"], keys:["future","goals"],
+    a:"In five years I want to be leading the design of agent systems that businesses rely on, and mentoring other engineers to build them well. Until then, I want to learn how to run these systems at scale." },
+
+  { id:"availability", triggers:["notice period","when can you start","start date","availability","how soon can you join","when can you join"], keys:["notice"],
+    a:"I can start within 15 days of an offer." },
+
+  { id:"salary", triggers:["salary","compensation","expected pay","what do you expect","ctc","how much"], keys:["salary","pay"],
+    a:"I’d rather talk about pay in a conversation, once we’ve both seen how well the role fits. I’m happy to share my expectations then." },
+
+  { id:"contact", triggers:["contact","email","reach you","linkedin","github","get in touch","phone"], keys:["contact","email"],
+    a:"You can reach me at adityapurohit2002@gmail.com. My code is on GitHub under adityapurohit-tech, and my LinkedIn is linked at the bottom of this page." },
+
+  { id:"thanks", triggers:["thank you","thanks","goodbye","bye"], keys:[],
+    a:"Thank you for taking the time. If you’d like to hear more, ask me about my projects or how I use AI tools." },
+];
+
+const FALLBACK = "I haven’t prepared an answer for that one, and I’d rather not guess. I can tell you about my background, my superpower, what I’m working on, my projects, or how I use AI tools. Which would you like?";
+
+const SUGGESTIONS = [
+  "What should we know about your life story in a few sentences?",
+  "What’s your #1 superpower?",
+  "What are the top 3 areas you’d like to grow in?",
+  "What misconception do your coworkers have about you?",
+  "How do you push your boundaries and limits?",
+  "Tell me about a project you’re proud of",
+  "How do you use AI tools?",
+];
+
+/* ===== Optional: ask Claude for questions the answer bank does not cover ===== */
+const FACTS = [
+  "Name: Aditya Shrikant Purohit, from Kolhapur, Maharashtra, India. AI Engineer.",
+  "Working since June 2024 at Microtech Solutions as an AI Full Stack Developer. Post-graduate diploma in AI at IIT Jodhpur (2025 to 2026).",
+  "Builds LLM, RAG and agent systems in Python and TypeScript (LangGraph, LangChain, FastAPI, React, Node.js).",
+  "Project 1: regulatory-grade RAG platform. Verifies every answer claim by claim, refuses before calling the model when retrieval is weak, golden-set evaluation. On a 19-question set decision accuracy went from 36.8% to 100% and answer accuracy from 2 of 13 to 13 of 13.",
+  "Project 2: 11-agent LangGraph lead decisioning system with a compliance gate that fails closed, scikit-learn triage, human review, Redis and Neo4j memory.",
+  "Project 3: expert-call analyzer, runs locally on Llama through Ollama, answers only from transcripts with exact quotes.",
+  "Uses Claude Code, Cursor and GitHub Copilot daily and reviews and tests every change.",
+  "Notice period 15 days. Email adityapurohit2002@gmail.com. GitHub adityapurohit-tech.",
+];
+async function askClaude(question){
+  // 1) Inside claude.ai: use the built-in capability when it exists.
+  try{
+    if(typeof claude !== "undefined"){
+      const sample = await claude.use("sample");
+      if(sample){
+        const prompt = "You are Aditya Purohit answering an interview question out loud, in first person, in 2 to 4 short spoken sentences, plain words, no lists. Use ONLY these facts:\n" + FACTS.join("\n") +
+          "\nIf the facts do not cover the question, say honestly that you would rather not guess and mention one thing you can talk about. Never invent employers, numbers, dates or personal details.\n\nQuestion: " + question;
+        const r = await sample(prompt, {cache:false, modelTier:"quick"});
+        if(r && r.text) return r.text.trim();
+      }
+    }
+  }catch(e){}
+  // 2) Hosted version: ask our own small server function. The API key lives on the server, never in this page.
+  try{
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 20000);
+    const res = await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({question}), signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!res.ok) return null;
+    const j = await res.json();
+    return (j && j.answer) ? String(j.answer).trim() : null;
+  }catch(e){ return null; }
+}
+
+/* ===== Matching ===== */
+function norm(s){ return " " + s.toLowerCase().replace(/[’']/g," ").replace(/#1/g," number one ").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim() + " "; }
+function matchAnswer(q){
+  const n = norm(q); const tokens = new Set(n.trim().split(" "));
+  let best = null, bestScore = 0;
+  for(const e of PERSONA){
+    let s = 0;
+    for(const t of e.triggers){ const nt = norm(t); if(n.includes(nt)) s += 4 + nt.trim().split(" ").length; }
+    for(const k of e.keys){ if(tokens.has(k)) s += 2; }
+    if(s > bestScore){ best = e; bestScore = s; }
+  }
+  return bestScore >= 3 ? best : null;
+}
+
+/* ===== UI ===== */
+const $ = id => document.getElementById(id);
+const orb = $("orb"), statusEl = $("status"), capEl = $("caption"), logEl = $("log"), notice = $("notice");
+let speakOn = true, busy = false, recog = null, listening = false, voices = [];
+
+function setState(s, text){ orb.dataset.state = s; if(text) statusEl.textContent = text;
+  orb.setAttribute("aria-label", s==="listening" ? "Stop listening" : "Start talking"); }
+function showNotice(t){ notice.textContent = t; notice.hidden = !t; }
+function addMsg(who, text){
+  if(logEl.querySelector(".empty")) logEl.innerHTML = "";
+  const d = document.createElement("div"); d.className = "msg " + (who==="you" ? "you" : "bot");
+  const b = document.createElement("b"); b.textContent = who==="you" ? "You asked" : "Aditya";
+  const p = document.createElement("p"); p.textContent = text;
+  d.append(b,p); logEl.appendChild(d); d.scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+
+/* speech output */
+let chosenVoice = null;
+function voiceScore(v){
+  const n = v.name || "", l = (v.lang || "").replace("_","-");
+  if(!/^en/i.test(l)) return -1;
+  let s = 0;
+  if(/natural|neural|online/i.test(n)) s += 8;
+  if(/google/i.test(n)) s += 4;
+  if(/microsoft/i.test(n)) s += 2;
+  if(/^en-IN/i.test(l)) s += 5; else if(/^en-GB/i.test(l)) s += 3; else if(/^en-US/i.test(l)) s += 2;
+  if(/siri|samantha|daniel|karen|moira|rishi|veena|neerja|prabhat|ryan|libby|sonia|aria|jenny|guy/i.test(n)) s += 2;
+  if(v.localService === false) s += 1;
+  if(/espeak|compact|zira|david|mark|hazel/i.test(n)) s -= 3;
+  return s;
+}
+function loadVoices(){
+  voices = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  const en = voices.filter(v => voiceScore(v) >= 0).sort((a,b) => voiceScore(b) - voiceScore(a));
+  const sel = document.getElementById("voiceSel"); if(!sel) return;
+  const keep = chosenVoice && en.find(v => v.name === chosenVoice.name);
+  sel.innerHTML = "";
+  en.forEach(v => { const o = document.createElement("option"); o.value = v.name; o.textContent = v.name.replace(/^Microsoft /,"") + " (" + v.lang + ")"; sel.appendChild(o); });
+  chosenVoice = keep || en[0] || null;
+  if(chosenVoice) sel.value = chosenVoice.name;
+  sel.hidden = en.length < 2;
+}
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function pickVoice(){ return chosenVoice || voices[0] || null; }
+const LEADINS = ["Sure.","Good question.","Happy to answer that.","Thanks for asking."];
+let leadN = 0;
+function leadIn(hit, answer){
+  if(!hit || ["greeting","thanks","availability","salary","contact"].includes(hit.id)) return answer;
+  return LEADINS[leadN++ % LEADINS.length] + " " + answer;
+}
+function speak(text){
+  return new Promise(resolve => {
+    if(!speakOn || !("speechSynthesis" in window)){ resolve(); return; }
+    speechSynthesis.cancel();
+    const parts = text.match(/[^.!?]+[.!?]*/g) || [text]; let i = 0; const v = pickVoice();
+    setState("speaking","Speaking…");
+    const next = () => {
+      if(i >= parts.length){ resolve(); return; }
+      const u = new SpeechSynthesisUtterance(parts[i++].trim());
+      if(v){ u.voice = v; u.lang = v.lang; } else { u.lang = "en-IN"; }
+      u.rate = 0.95; u.pitch = 1;
+      u.onend = () => setTimeout(next, 230);
+      u.onerror = () => resolve();
+      speechSynthesis.speak(u);
+    };
+    next();
+  });
+}
+function stopSpeaking(){ if("speechSynthesis" in window) speechSynthesis.cancel(); }
+
+async function ask(question){
+  question = question.trim(); if(!question || busy) return;
+  busy = true; showNotice(""); capEl.textContent = "";
+  addMsg("you", question);
+  setState("thinking","Thinking…");
+  let answer = null; const hit = matchAnswer(question);
+  if(hit) answer = hit.a;
+  else { answer = await askClaude(question); }
+  if(!answer) answer = FALLBACK;
+  const spoken = leadIn(hit, answer);
+  addMsg("bot", spoken);
+  await speak(spoken);
+  setState("idle","Tap the circle and ask another question");
+  busy = false;
+}
+
+/* speech input */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function startListening(){
+  if(!SR){ showNotice("Voice input isn’t supported in this browser. Please use Chrome or Edge, or type your question below."); return; }
+  if(busy) return;
+  stopSpeaking();
+  recog = new SR(); recog.lang = "en-IN"; recog.interimResults = true; recog.continuous = false; recog.maxAlternatives = 1;
+  let finalText = "";
+  recog.onstart = () => { listening = true; setState("listening","Listening… ask your question"); capEl.textContent = ""; };
+  recog.onresult = ev => {
+    let interim = "";
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) finalText += t; else interim += t;
+    }
+    capEl.textContent = "“" + (finalText + interim).trim() + "”";
+  };
+  recog.onerror = ev => {
+    listening = false;
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){
+      showNotice("The microphone is blocked. Allow microphone access for this page, or open the link in its own browser tab. You can also type your question below.");
+    } else if(ev.error === "no-speech"){
+      showNotice("I didn’t hear anything. Tap the circle and try again, or type your question.");
+    } else if(ev.error !== "aborted"){
+      showNotice("Voice input had a problem (" + ev.error + "). You can type your question below.");
+    }
+    setState("idle","Tap the circle and ask a question");
+  };
+  recog.onend = () => {
+    const wasListening = listening; listening = false;
+    const t = finalText.trim();
+    if(t){ capEl.textContent = ""; ask(t); }
+    else if(wasListening && orb.dataset.state === "listening"){ setState("idle","Tap the circle and ask a question"); }
+  };
+  try{ recog.start(); }catch(e){ showNotice("Couldn’t start the microphone. Please try again or type your question."); }
+}
+orb.addEventListener("click", () => {
+  if(listening && recog){ recog.stop(); return; }
+  if(orb.dataset.state === "speaking"){ stopSpeaking(); return; }
+  startListening();
+});
+$("stopBtn").addEventListener("click", () => { stopSpeaking(); if(listening && recog) recog.abort(); setState("idle","Tap the circle and ask a question"); busy = false; });
+$("speakToggle").addEventListener("click", e => {
+  speakOn = !speakOn; e.currentTarget.setAttribute("aria-pressed", String(speakOn));
+  e.currentTarget.textContent = "Spoken answers: " + (speakOn ? "on" : "off"); if(!speakOn) stopSpeaking();
+});
+$("askForm").addEventListener("submit", e => { e.preventDefault(); const v = $("askInput").value; $("askInput").value = ""; ask(v); });
+
+const chips = $("chips");
+SUGGESTIONS.forEach(q => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = q; b.addEventListener("click", () => ask(q)); chips.appendChild(b); });
+if(!SR) showNotice("Voice input needs Chrome or Edge. In this browser you can type a question or tap a suggestion, and the answer will still be spoken.");
+$("voiceSel").addEventListener("change", e => {
+  chosenVoice = voices.find(v => v.name === e.target.value) || chosenVoice;
+  speak("Hi, this is how I sound. Ask me anything.").then(() => setState("idle","Tap the circle and ask a question"));
+});
+window.__test = { matchAnswer, PERSONA, voiceScore };
+</script>
+</body>
+</html>
