@@ -37,12 +37,12 @@ module.exports = async (req, res) => {
       const j = await r.json();
       answer = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
     } else if (process.env.GEMINI_API_KEY) {
-      const models = [process.env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"].filter(Boolean);
+      const models = [process.env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-flash-latest"].filter(Boolean);
       let lastErr = "";
       for (const model of models) {
         try {
         const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
-          signal: AbortSignal.timeout(3000), method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+          signal: AbortSignal.timeout(20000), method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: SYSTEM }] },
             contents: [{ role: "user", parts: [{ text: question }] }],
