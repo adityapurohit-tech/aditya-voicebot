@@ -25,7 +25,24 @@ module.exports = async (req, res) => {
   if (!question) return res.status(400).json({ error: "No question" });
   try {
     let answer;
-    if (process.env.OPENAI_API_KEY) {
+    if (process.env.GROQ_API_KEY) {
+      const gm = [process.env.GROQ_MODEL, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"].filter(Boolean);
+      for (const model of gm) {
+        try {
+          const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            signal: AbortSignal.timeout(15000), method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.GROQ_API_KEY },
+            body: JSON.stringify({ model, temperature: 0.6, max_tokens: 220,
+              messages: [{ role: "system", content: SYSTEM }, { role: "user", content: question }] }),
+          });
+          const j = await r.json();
+          answer = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+          if (answer) break;
+          console.error("Groq failed", model, JSON.stringify(j && j.error));
+        } catch (e) { console.error("Groq error", model, e.name); }
+      }
+    }
+    if (!answer && process.env.OPENAI_API_KEY) {
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.OPENAI_API_KEY },
@@ -36,7 +53,7 @@ module.exports = async (req, res) => {
       });
       const j = await r.json();
       answer = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    } else if (process.env.GEMINI_API_KEY) {
+    } else if (!answer && process.env.GEMINI_API_KEY) {
       const models = [process.env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-flash-latest"].filter(Boolean);
       let lastErr = "";
       for (const model of models) {
@@ -58,7 +75,7 @@ module.exports = async (req, res) => {
         } catch (e) { lastErr += model + ": " + e.name + " | "; }
       }
       if (!answer) return res.status(502).json({ error: "Gemini failed", detail: lastErr.slice(0, 300) });
-    } else {
+    } else if (!answer) {
       return res.status(500).json({ error: "No API key configured on the server" });
     }
     if (!answer) return res.status(502).json({ error: "Empty answer" });
