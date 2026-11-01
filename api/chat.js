@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
       const j = await r.json();
       answer = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
     } else if (process.env.GEMINI_API_KEY) {
-      const models = [process.env.GEMINI_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash"].filter(Boolean);
+      const models = [process.env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash"].filter(Boolean);
       let lastErr = "";
       for (const model of models) {
         const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
         const parts = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
         answer = parts && parts.map(p => p.text || "").join("");
         if (answer) break;
-        lastErr = model + ": " + ((j && j.error && j.error.message) || "no text returned");
+        lastErr += model + ": " + ((j && j.error && j.error.message) || "no text returned") + " | ";
         console.error("Gemini failed", lastErr);
       }
       if (!answer) return res.status(502).json({ error: "Gemini failed", detail: lastErr.slice(0, 300) });
