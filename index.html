@@ -136,8 +136,20 @@ footer a{color:var(--accent)}
    a = the spoken answer. Keep answers to 3-5 short sentences.
    =========================================================================== */
 const PERSONA = [
-  { id:"greeting", triggers:["hello","hi there","hey there","good morning","good evening"], keys:[],
+  { id:"greeting", triggers:["hello","hi there","hey there","good morning","good evening","good afternoon"], keys:["hey","hi","hello"],
     a:"Hi, this is Aditya. Ask me anything about my background, how I work, or the AI systems I’ve built." },
+
+  { id:"smalltalk", triggers:["how are you","how r you","how do you do","how is it going","whats up"], keys:[],
+    a:"I’m doing well, thanks for asking. Ask me about my background, my projects, or how I build AI systems." },
+
+  { id:"rag", triggers:["rag","retrieval augmented","rack platform","which rag","vector search","knowledge base"], keys:["rag","retrieval","rack"],
+    a:"My main RAG project is a regulatory-grade platform. It checks every answer claim by claim against the retrieved sources, and it refuses before calling the model when retrieval is weak. On my 19-question test set, decision accuracy went from 36.8 percent to 100 percent. I use FAISS and pgvector for retrieval." },
+
+  { id:"work", triggers:["where do you work","current job","current company","your experience","work experience","years of experience","microtech","your role"], keys:["experience","company","employer","job"],
+    a:"I’ve worked at Microtech Solutions since June 2024 as an AI Full Stack Developer. I build LLM, RAG and agent systems in Python and TypeScript, and I’m also finishing a post-graduate diploma in AI at IIT Jodhpur." },
+
+  { id:"education", triggers:["education","where did you study","your degree","iit jodhpur","qualification"], keys:["education","degree","study","studied","iit"],
+    a:"I’m doing a post-graduate diploma in AI at IIT Jodhpur, from 2025 to 2026, alongside my full-time work in AI engineering." },
 
   { id:"life", triggers:["life story","about yourself","tell me about you","who are you","introduce yourself","your background","your story","walk me through"], keys:["background","story","yourself"],
     a:"I’m Aditya, from Kolhapur in Maharashtra. I studied engineering and moved into AI, started working in June 2024, and I’m finishing a post-graduate diploma in AI at IIT Jodhpur. Today I build agent and RAG systems, and what I care about most is making their answers something you can verify, not just something that sounds right." },
@@ -157,7 +169,7 @@ const PERSONA = [
   { id:"why100x", triggers:["why 100x","why this role","why do you want","why should we hire","why you","why this company","why are you interested","why join"], keys:["100x"],
     a:"I like that 100x is about agents doing real work for real businesses, and that engineers own the outcome. That’s how I like to build: a scoped problem, a measurable result, then ship it and improve it from real feedback." },
 
-  { id:"projects", triggers:["project","something you built","what have you built","proud of","portfolio","what are you working on","your work","show me"], keys:["projects","built","proud"],
+  { id:"projects", triggers:["project","something you built","what have you built","proud of","portfolio","what are you working on","your work","show me","worked on","ai projects","have you done"], keys:["projects","project","built","proud","portfolio"],
     a:"Three I’d point to. A regulatory-grade RAG platform that checks every answer claim by claim against its sources and refuses when it can’t. An eleven-agent LangGraph system for lead decisions, with a compliance gate and a human-review step. And an expert-call analyzer that runs fully locally and answers only from the transcripts. All three are on my GitHub." },
 
   { id:"agents", triggers:["ai agent","built an agent","multi agent","agentic","langgraph","how do your agents"], keys:["agent","agents","agentic"],
@@ -197,7 +209,7 @@ const PERSONA = [
     a:"Thank you for taking the time. If you’d like to hear more, ask me about my projects or how I use AI tools." },
 ];
 
-const FALLBACK = "I haven’t prepared an answer for that one, and I’d rather not guess. I can tell you about my background, my superpower, what I’m working on, my projects, or how I use AI tools. Which would you like?";
+const FALLBACK = "I’m an AI engineer working on RAG platforms, multi-agent systems and local LLM tools. I don’t have a specific answer for that one, but ask me about my life story, my superpower, my projects or how I use AI tools, and I’ll gladly go into detail.";
 
 const SUGGESTIONS = [
   "What should we know about your life story in a few sentences?",
@@ -248,6 +260,7 @@ async function askClaude(question){
 function norm(s){ return " " + s.toLowerCase().replace(/[’']/g," ").replace(/#1/g," number one ").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim() + " "; }
 function matchAnswer(q){
   const n = norm(q); const tokens = new Set(n.trim().split(" "));
+  tokens.forEach(t => { if(t.length > 3 && t.endsWith("s")) tokens.add(t.slice(0,-1)); });
   let best = null, bestScore = 0;
   for(const e of PERSONA){
     let s = 0;
