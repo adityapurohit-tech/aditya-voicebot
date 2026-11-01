@@ -37,18 +37,25 @@ module.exports = async (req, res) => {
       const j = await r.json();
       answer = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
     } else if (process.env.GEMINI_API_KEY) {
-      const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + process.env.GEMINI_API_KEY, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM }] },
-          contents: [{ role: "user", parts: [{ text: question }] }],
-          generationConfig: { temperature: 0.6, maxOutputTokens: 220 },
-        }),
-      });
-      const j = await r.json();
-      const parts = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
-      answer = parts && parts.map(p => p.text || "").join("");
+      const models = [process.env.GEMINI_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash"].filter(Boolean);
+      let lastErr = "";
+      for (const model of models) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM }] },
+            contents: [{ role: "user", parts: [{ text: question }] }],
+            generationConfig: { temperature: 0.6, maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } },
+          }),
+        });
+        const j = await r.json();
+        const parts = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
+        answer = parts && parts.map(p => p.text || "").join("");
+        if (answer) break;
+        lastErr = model + ": " + ((j && j.error && j.error.message) || "no text returned");
+        console.error("Gemini failed", lastErr);
+      }
+      if (!answer) return res.status(502).json({ error: "Gemini failed", detail: lastErr.slice(0, 300) });
     } else {
       return res.status(500).json({ error: "No API key configured on the server" });
     }
